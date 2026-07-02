@@ -82,8 +82,8 @@ def main() -> None:
     plot_kmeans_metrics(kmeans_metrics, output_root)
 
     cluster_summary = summarize_clusters(X, cluster_labels)
-    cluster_summary.to_csv(tables_dir / "cluster_summary.csv", index=False)
-    plot_cluster_distribution(cluster_summary, output_root)
+    cluster_summary.to_csv(tables_dir / "kmeans_cluster_summary.csv", index=False)
+    plot_cluster_distribution(cluster_summary, output_root, prefix="kmeans_")
     print(f"K-Means selesai. k terpilih: {best_k}")
 
     # ---- Unsupervised: GMM (Modern Probabilistic) ----
@@ -97,7 +97,7 @@ def main() -> None:
 
     gmm_cluster_summary = summarize_clusters(X, gmm_result["labels"])
     gmm_cluster_summary.to_csv(tables_dir / "gmm_cluster_summary.csv", index=False)
-    plot_cluster_distribution(gmm_cluster_summary, output_root)
+    plot_cluster_distribution(gmm_cluster_summary, output_root, prefix="gmm_")
     print(f"GMM selesai. k terpilih: {gmm_best_k}")
 
     # ---- Supervised: Classification Models ----

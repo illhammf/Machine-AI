@@ -148,10 +148,14 @@ def plot_kmeans_metrics(metrics_df: pd.DataFrame, output_root: str | Path) -> No
     plt.close()
 
 
-def plot_cluster_distribution(cluster_summary: pd.DataFrame, output_root: str | Path) -> None:
+def plot_cluster_distribution(
+    cluster_summary: pd.DataFrame, output_root: str | Path, prefix: str = ""
+) -> None:
     """Save cluster-size distribution chart."""
     figures_dir = Path(output_root) / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{prefix}cluster_distribution.png" if prefix else "cluster_distribution.png"
 
     plt.figure(figsize=(7, 4))
     sns.barplot(data=cluster_summary, x="Cluster", y="Jumlah_Data")
@@ -159,7 +163,7 @@ def plot_cluster_distribution(cluster_summary: pd.DataFrame, output_root: str | 
     plt.xlabel("Cluster")
     plt.ylabel("Jumlah Data")
     plt.tight_layout()
-    plt.savefig(figures_dir / "cluster_distribution.png", dpi=150)
+    plt.savefig(figures_dir / filename, dpi=150)
     plt.close()
 
 
