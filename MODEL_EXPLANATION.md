@@ -1,219 +1,257 @@
 # Model Explanation — Stack Overflow AI Tools ML
 
-Dokumen ini menjelaskan alasan pemilihan dan cara kerja setiap model yang digunakan dalam proyek ini.
+Dokumen ini menjelaskan struktur model, alasan pemilihan, dan cara kerja setiap algoritma yang digunakan dalam proyek Machine Learning berbasis Stack Overflow Developer Survey 2025.
+
+Tujuan utama proyek ini adalah:
+1. Mengelompokkan developer berdasarkan karakteristik mereka (unsupervised learning)
+2. Memprediksi penggunaan AI tools oleh developer (supervised learning)
+3. Membandingkan pendekatan tradisional dan modern dalam Machine Learning
 
 ---
 
-## Daftar Model
+# 1. Daftar Model yang Digunakan
 
-| # | Model | Kategori | Tipe | Tujuan |
-|---|-------|----------|------|--------|
-| 1 | **K-Means** | Tradisional | Unsupervised | Segmentasi developer |
-| 2 | **GMM** | Modern | Unsupervised | Segmentasi developer (probabilistic) |
-| 3 | **Random Forest** | Tradisional | Supervised | Klasifikasi AI Usage |
-| 4 | **Linear SVM** | Tradisional | Supervised | Klasifikasi AI Usage |
-| 5 | **XGBoost** | Modern | Supervised | Klasifikasi AI Usage |
-| 6 | **MLP (Neural Network)** | Modern | Supervised | Klasifikasi AI Usage |
-
----
-
-## A. Unsupervised Learning — Segmentasi Developer
-
-### 1. K-Means (Traditional)
-
-**Alasan Pemilihan:**
-- Algoritma clustering paling populer dan mudah diinterpretasi.
-- Cocok untuk segmentasi awal karena sederhana dan cepat.
-- Menjadi **baseline** untuk perbandingan dengan metode clustering modern.
-
-**Cara Kerja:**
-1. Inisialisasi `k` centroid secara acak.
-2. Setiap data point ditetapkan ke centroid terdekat (jarak Euclidean).
-3. Centroid dihitung ulang sebagai rata-rata semua point dalam cluster.
-4. Langkah 2-3 diulang sampai centroid tidak berubah (konvergen).
-
-**Parameter:**
-- `k`: dipilih berdasarkan Silhouette Score tertinggi (diuji 2–10).
-- `n_init=10`: inisialisasi ulang 10 kali untuk menghindari local optimum.
-- `random_state=42`: reproducible.
-
-**Kelemahan pada Dataset Ini:**
-- Hanya menghasilkan **k=2** (minimum), artinya data tidak memiliki struktur cluster yang tegas.
-- Rentan terhadap curse of dimensionality — itulah mengapa data direduksi dengan TruncatedSVD sebelum clustering.
+| No | Model | Jenis | Tipe Learning | Tujuan |
+|----|------|------|--------------|--------|
+| 1 | K-Means | Traditional | Unsupervised | Segmentasi developer |
+| 2 | Gaussian Mixture Model (GMM) | Modern | Unsupervised | Segmentasi probabilistik developer |
+| 3 | Random Forest | Traditional | Supervised | Klasifikasi penggunaan AI |
+| 4 | Linear SVM | Traditional | Supervised | Klasifikasi baseline |
+| 5 | XGBoost | Modern | Supervised | Klasifikasi performa tinggi |
+| 6 | MLP Neural Network | Modern | Supervised | Klasifikasi non-linear kompleks |
 
 ---
 
-### 2. GMM — Gaussian Mixture Model (Modern)
+# 2. Unsupervised Learning (Segmentasi Developer)
 
-**Alasan Pemilihan:**
-- Lebih fleksibel dari K-Means karena cluster bisa berbeda bentuk dan ukuran.
-- Memberikan **soft clustering**: setiap developer punya probabilitas masuk ke tiap cluster.
-- Modern probabilistic approach — cocok dibandingkan dengan K-Means yang rigid.
-
-**Cara Kerja:**
-1. Asumsi data berasal dari campuran beberapa distribusi Gaussian.
-2. **Expectation-Maximization (EM)** digunakan untuk memperkirakan parameter tiap Gaussian (mean, covariance, weight).
-3. E-step: hitung probabilitas tiap point terhadap tiap cluster.
-4. M-step: update parameter distribusi berdasarkan probabilitas tersebut.
-5. Ulang sampai konvergen.
-
-**Parameter:**
-- `k`: sama seperti K-Means, dipilih berdasarkan Silhouette Score (diuji 2–8).
-- `n_init=3`: inisialisasi ulang 3 kali (dikurangi dari default 5 untuk efisiensi).
-- `covariance_type='full'`: tiap cluster punya covariance matrix sendiri.
-
-**Kelebihan pada Dataset Ini:**
-- Menghasilkan **k=8** (lebih informatif dari K-Means yang hanya k=2).
-- Probabilitas cluster dapat digunakan untuk analisis lebih lanjut.
-- Cluster bisa memiliki bentuk ellipsoid, tidak hanya spherical seperti K-Means.
+Tujuan tahap ini adalah mengelompokkan developer berdasarkan pola perilaku, teknologi, dan pengalaman tanpa label target.
 
 ---
 
-## B. Supervised Learning — Klasifikasi AI Usage
+## 2.1 K-Means Clustering (Baseline Model)
 
-**Target:** `AI_Usage` (1 = menggunakan AI tools, 0 = tidak).
+### Tujuan
+K-Means digunakan sebagai model baseline karena sederhana, cepat, dan mudah diinterpretasikan.
 
-**Imbalance:** 78.5% kelas 1 vs 21.5% kelas 0. Semua model menggunakan `class_weight="balanced"` atau `scale_pos_weight` untuk mengatasi imbalance.
+### Cara Kerja
+1. Menentukan jumlah cluster (k)
+2. Menentukan centroid secara acak
+3. Menghitung jarak setiap data ke centroid (Euclidean distance)
+4. Mengelompokkan data ke centroid terdekat
+5. Menghitung ulang centroid berdasarkan rata-rata cluster
+6. Mengulangi proses hingga stabil (konvergen)
 
-### 3. Random Forest (Traditional)
+### Parameter
+- k dipilih berdasarkan Silhouette Score (range 2–10)
+- n_init = 10 untuk menghindari hasil lokal optimum
+- random_state = 42 untuk reproduktibilitas
 
-**Alasan Pemilihan:**
-- Ensemble method yang robust terhadap outlier dan overfitting.
-- Menangani campuran fitur numerik, kategorikal, dan multi-select dengan baik.
-- Memberikan feature importance untuk interpretasi.
+### Kelebihan
+- Cepat dan efisien
+- Mudah dipahami
 
-**Cara Kerja:**
-1. Membangun banyak decision tree (200 trees) pada bootstrap sample data.
-2. Setiap tree hanya mempertimbangkan subset fitur acak saat split.
-3. Prediksi akhir: voting mayoritas dari semua tree.
-
-**Parameter:**
-- `n_estimators=200`: jumlah pohon.
-- `class_weight="balanced"`: menangani imbalance.
-- `n_jobs=-1`: menggunakan semua CPU core.
-
-**Hasil:** F1-score = **0.867** (kelas AI User) — model kedua terbaik setelah MLP.
-
----
-
-### 4. Linear SVM / LinearSVC (Traditional)
-
-**Alasan Pemilihan:**
-- Model linear yang sederhana dan mudah diinterpretasi.
-- Sebagai **baseline** untuk perbandingan dengan model non-linear (Random Forest, XGBoost, MLP).
-- Bekerja baik pada data high-dimensional sparse (hasil OHE + CountVectorizer).
-
-**Cara Kerja:**
-1. Mencari hyperplane (decision boundary) yang memisahkan dua kelas dengan margin maksimal.
-2. LinearSVC menggunakan loss function hinge loss dengan regularisasi L2.
-3. Prediksi berdasarkan sisi hyperplane tempat data point berada.
-
-**Parameter:**
-- `class_weight="balanced"`: mengatasi imbalance.
-- `max_iter=5000`: iterasi maksimal untuk konvergensi.
-- `C=1.0`: regularization strength (default).
-
-**Kelemahan pada Dataset Ini:**
-- Decision boundary linear tidak cukup untuk memisahkan pengguna vs non-pengguna AI.
-- Performa terendah: F1 = **0.760**.
-- Karena hubungan antara karakteristik developer dan penggunaan AI bersifat **non-linear**.
+### Keterbatasan
+- Hanya mampu membentuk cluster berbentuk bulat (spherical)
+- Pada dataset ini hanya menghasilkan k kecil (struktur data tidak terlalu kuat)
 
 ---
 
-### 5. XGBoost (Modern)
+## 2.2 Gaussian Mixture Model (GMM)
 
-**Alasan Pemilihan:**
-- State-of-the-art untuk tabular data — sering menang di kompetisi Kaggle.
-- Gradient boosting yang lebih optimal dari Random Forest.
-- Handle missing value secara native.
+### Tujuan
+GMM digunakan untuk meningkatkan fleksibilitas clustering dengan pendekatan probabilistik.
 
-**Cara Kerja:**
-1. Membangun pohon secara **sequential**: setiap pohon baru memperbaiki error pohon sebelumnya.
-2. Menggunakan **gradient descent** untuk meminimalkan loss function.
-3. Regularisasi (L1/L2) untuk mencegah overfitting.
+### Cara Kerja
+GMM mengasumsikan data berasal dari beberapa distribusi Gaussian.
 
-**Parameter:**
-- `n_estimators=200`: jumlah pohon boosting.
-- `learning_rate=0.1`: shrinkage untuk mencegah overfitting.
-- `max_depth=6`: kedalaman pohon.
-- `scale_pos_weight`: rasio negatif/positif untuk mengatasi imbalance.
-- `eval_metric='logloss'`: metrik evaluasi selama training.
+Proses utama:
+1. Expectation Step: menghitung probabilitas data terhadap setiap cluster
+2. Maximization Step: memperbarui parameter distribusi (mean, covariance, weight)
+3. Iterasi hingga konvergen
 
-**Hasil:** F1-score = **0.789** — lebih rendah dari Random Forest. Kemungkinan karena tuning hyperparameter belum optimal (masih default baseline).
+### Parameter
+- k dipilih menggunakan Silhouette Score (2–8)
+- covariance_type = "full"
+- n_init = 3
 
----
+### Kelebihan
+- Mendukung soft clustering (probabilitas ke setiap cluster)
+- Cluster dapat berbentuk ellipsoid, tidak terbatas bentuk bulat
+- Lebih realistis untuk data kompleks
 
-### 6. MLP — Multi-Layer Perceptron (Modern)
-
-**Alasan Pemilihan:**
-- Neural network untuk tabular data — menangkap pola non-linear yang kompleks.
-- Satu-satunya model deep learning dalam proyek ini.
-- Perbandingan menarik: apakah neural network mengalahkan tree-based model?
-
-**Cara Kerja:**
-1. Input layer: fitur hasil preprocessing (dense representation).
-2. Hidden layer 1: 100 neuron dengan aktivasi ReLU.
-3. Hidden layer 2: 50 neuron dengan aktivasi ReLU.
-4. Output layer: 1 neuron dengan sigmoid (binary classification).
-5. Backpropagation dengan Adam optimizer untuk meminimalkan binary cross-entropy.
-6. **Early stopping** untuk mencegah overfitting.
-
-**Parameter:**
-- `hidden_layer_sizes=(100, 50)`: dua hidden layer.
-- `max_iter=500`: maksimal epoch.
-- `early_stopping=True`: stop jika validation loss tidak membaik.
-- `random_state=42`: reproducible.
-
-**Hasil:** F1-score = **0.882** — **model terbaik**. Menarik karena neural network outperform ensemble methods pada dataset ini.
+### Hasil
+- Menghasilkan cluster lebih banyak dibanding K-Means
+- Lebih informatif untuk analisis segmentasi
 
 ---
 
-## C. Perbandingan Traditional vs Modern
+# 3. Supervised Learning (Klasifikasi AI Usage)
 
-### Unsupervised
+## Target Variabel
+AI_Usage:
+- 1 = menggunakan AI tools
+- 0 = tidak menggunakan AI tools
 
-| Aspek | K-Means (Traditional) | GMM (Modern) |
-|-------|----------------------|--------------|
-| Jenis cluster | Hard (tegas) | Soft (probabilistik) |
-| Bentuk cluster | Spherical saja | Ellipsoid (bervariasi) |
-| k terbaik | 2 | 8 |
-| Interpretasi | Mudah | Sedang |
+Dataset memiliki ketidakseimbangan kelas:
+- 78.5% kelas mayoritas
+- 21.5% kelas minoritas
 
-### Supervised
-
-| Aspek | RF & SVM (Traditional) | XGBoost & MLP (Modern) |
-|-------|----------------------|----------------------|
-| Kompleksitas | Rendah–Sedang | Sedang–Tinggi |
-| Training time | Cepat | Sedang–Lama |
-| Performa terbaik | RF: 0.867 | **MLP: 0.882** |
-| Interpretasi | RF: feature importance tersedia | Sulit (black box) |
-| Overfitting risk | Rendah (RF ensemble) | Sedang (bisa diatasi early stopping) |
+Semua model menggunakan teknik balancing (class_weight atau scale_pos_weight).
 
 ---
 
-## D. Dataset Considerations
+## 3.1 Random Forest
 
-**Mengapa model tertentu cocok/tidak cocok:**
+### Tujuan
+Model ensemble sebagai baseline kuat untuk klasifikasi tabular data.
 
-1. **Imbalance (78:22)** → Semua supervised model pakai class weighting, tapi tetap kesulitan memprediksi kelas minoritas (non-AI user). Lihat tabel classification report: recall Non-AI hanya 0.17–0.68.
+### Cara Kerja
+1. Membuat banyak decision tree dari bootstrap sample
+2. Setiap tree memilih subset fitur secara acak
+3. Hasil akhir ditentukan melalui voting mayoritas
 
-2. **Multi-select features** (Language, Database, Platform, Webframe) → Diencode sebagai sparse binary vectors via CountVectorizer. Tree-based models (RF, XGBoost) dan SVM menangani sparse data dengan baik. MLP juga bisa karena hidden layer belajar dense representation.
+### Parameter
+- n_estimators = 200
+- class_weight = balanced
+- n_jobs = -1
 
-3. **Missing YearsCodePro & ToolsTechHaveWorkedWith** → Dua fitur penting tidak tersedia, yang mungkin berkontribusi pada performa model yang belum optimal.
+### Kelebihan
+- Stabil terhadap noise dan outlier
+- Tidak mudah overfitting
+- Dapat menampilkan feature importance
 
-4. **High cardinality** (Country: 100+ unique values, DevType: banyak kombinasi) → One-Hot Encoding menghasilkan dimensi tinggi. Namun TruncatedSVD untuk clustering dan tree-based models untuk klasifikasi dapat menanganinya.
+### Hasil
+F1-score: 0.867
 
 ---
 
-## E. Kesimpulan untuk BAB IV
+## 3.2 Linear SVM
 
-Dari 6 model yang diuji:
+### Tujuan
+Digunakan sebagai baseline model linear.
 
-- **K-Means (k=2)**: segmentasi dasar, interpretasi mudah, tapi cluster kurang informatif.
-- **GMM (k=8)**: segmentasi lebih granular, cocok untuk analisis segmentasi yang lebih dalam.
-- **Random Forest**: baseline klasifikasi yang solid (F1=0.867).
-- **Linear SVM**: paling lemah, menunjukkan hubungan non-linear dalam data.
-- **XGBoost**: potensi besar dengan tuning lebih lanjut.
-- **MLP Neural Network**: **terbaik** (F1=0.882), membuktikan neural network efektif untuk tabular data developer.
+### Cara Kerja
+SVM mencari hyperplane terbaik yang memaksimalkan margin antar kelas.
 
-Rekomendasi untuk deployment: **Random Forest** jika interpretability penting, **MLP** jika performa murni yang diutamakan.
+### Parameter
+- C = 1.0
+- max_iter = 5000
+- class_weight = balanced
+
+### Kelemahan
+- Tidak mampu menangkap hubungan non-linear
+- Performa paling rendah di antara semua model
+
+### Hasil
+F1-score: 0.760
+
+---
+
+## 3.3 XGBoost
+
+### Tujuan
+Model boosting modern untuk meningkatkan akurasi prediksi.
+
+### Cara Kerja
+1. Model dibangun secara sequential
+2. Setiap model baru memperbaiki error model sebelumnya
+3. Menggunakan gradient descent untuk optimasi loss function
+
+### Parameter
+- n_estimators = 200
+- learning_rate = 0.1
+- max_depth = 6
+- scale_pos_weight untuk imbalance
+
+### Kelebihan
+- Sangat kuat untuk data tabular
+- Menangani missing value secara otomatis
+- Digunakan luas dalam industri dan kompetisi data science
+
+### Hasil
+F1-score: 0.789
+
+---
+
+## 3.4 MLP Neural Network
+
+### Tujuan
+Menguji kemampuan model deep learning pada data tabular.
+
+### Cara Kerja
+1. Input layer menerima fitur hasil preprocessing
+2. Hidden layer (100 neuron → 50 neuron)
+3. Aktivasi ReLU
+4. Output layer sigmoid untuk klasifikasi biner
+5. Optimasi menggunakan Adam optimizer
+6. Early stopping untuk mencegah overfitting
+
+### Parameter
+- hidden_layer_sizes = (100, 50)
+- max_iter = 500
+- early_stopping = True
+
+### Kelebihan
+- Mampu menangkap pola non-linear kompleks
+- Fleksibel terhadap data besar
+
+### Hasil
+F1-score: 0.882 (terbaik)
+
+---
+
+# 4. Perbandingan Model
+
+## 4.1 Unsupervised Learning
+
+| Model | Tipe Cluster | Interpretasi | Kelebihan |
+|------|-------------|--------------|------------|
+| K-Means | Hard clustering | Mudah | Cepat dan sederhana |
+| GMM | Soft clustering | Menengah | Lebih fleksibel |
+
+---
+
+## 4.2 Supervised Learning
+
+| Model | Tipe | Performa | Kelebihan |
+|------|------|---------|------------|
+| SVM | Linear | Rendah | Sederhana |
+| Random Forest | Ensemble | Tinggi | Stabil dan interpretatif |
+| XGBoost | Boosting | Menengah-Tinggi | Sangat kuat untuk tabular |
+| MLP | Neural Network | Tertinggi | Non-linear kompleks |
+
+---
+
+# 5. Analisis Dataset
+
+Dataset memiliki karakteristik:
+
+1. Imbalance data (78:22)
+   → Menyulitkan prediksi kelas minoritas
+
+2. Fitur multi-label (Language, Platform, Tools)
+   → Perlu encoding khusus (CountVectorizer / OneHot)
+
+3. Data kategorikal dominan
+   → Cocok untuk tree-based models
+
+4. Dimensi tinggi
+   → Menggunakan reduksi dimensi untuk clustering
+
+---
+
+# 6. Kesimpulan
+
+- K-Means dan GMM berhasil memberikan gambaran segmentasi developer
+- Semua model supervised berhasil memprediksi AI usage dengan performa berbeda
+- Model terbaik adalah MLP dengan F1-score tertinggi (0.882)
+- Dataset menunjukkan pola non-linear sehingga model modern lebih unggul
+
+---
+
+# 7. Rekomendasi
+
+- Gunakan Random Forest jika interpretasi penting
+- Gunakan MLP jika fokus pada performa
+- Gunakan GMM untuk analisis segmentasi probabilistik
+- Gunakan XGBoost untuk eksperimen tuning lanjutan
